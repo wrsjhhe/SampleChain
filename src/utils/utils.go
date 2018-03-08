@@ -12,10 +12,14 @@ func IntToHex(num int64) []byte  {
 	var buff = new(bytes.Buffer)
 
 	var err = binary.Write(buff,binary.BigEndian,num)
+	LogErr(err)
 
-	if err !=nil{
-		log.Panic(err)
-	}
 	return buff.Bytes()
 
+}
+
+func LogErr(err error)  {
+	if err!=nil{
+		log.Panic(err)
+	}
 }

@@ -4,14 +4,15 @@ import (
 	"time"
 	"bytes"
 	"encoding/gob"
-	"log"
+	"crypto/sha256"
+	"utils"
 )
 
 type Block struct {
 	TimeStamp     int64
-	Data          []byte
+	Transactions  []*Transation
 	PrevBlockHash []byte
-	Hash          []byte
+	Hash          []byte  //比特币用的Merkle树
 	Nonce		  int
 }
 
@@ -22,9 +23,7 @@ func (b* Block)Serialize() []byte  {
 	var encoder = gob.NewEncoder(&result) //序列化器
 
 	var err = encoder.Encode(b)
-	if err!=nil{
-		log.Panic(err)
-	}
+	utils.LogErr(err)
 
 	return  result.Bytes()
 }
@@ -36,17 +35,28 @@ func DeserializeBlock(d []byte) *Block {
 	var decoder = gob.NewDecoder(bytes.NewReader(d))
 	var err = decoder.Decode(&block)
 
-	if err!=nil{
-		log.Panic(err)
-	}
+	utils.LogErr(err)
 	return &block
 }
 
-func NewBlock(data string,prevBlockHash []byte) *Block  {
+//将块中的所有交易转化为hash
+func (b *Block)HashTransaction()[]byte  {
+	var txHashes    [][]byte
+	var txHash      [32]byte
+	for _, tx := range b.Transactions{
+		txHashes = append(txHashes,tx.ID)
+	}
+	txHash = sha256.Sum256(bytes.Join(txHashes,[]byte{}))
+
+	return txHash[:]
+}
+
+
+func NewBlock(transation []*Transation,prevBlockHash []byte) *Block  {
 
 	var block = &Block{
 		time.Now().Unix(),
-		[]byte(data),
+		transation,
 		prevBlockHash,
 		[]byte{},
 		0}
@@ -60,8 +70,8 @@ func NewBlock(data string,prevBlockHash []byte) *Block  {
 	return block
 }
 
-func NewGenesisBlock() *Block {
-	return NewBlock("Genesis Block",[]byte{})
+func NewGenesisBlock(coinbase *Transation) *Block {
+	return NewBlock([]*Transation{coinbase},[]byte{})
 
 }
 
