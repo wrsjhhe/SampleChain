@@ -10,7 +10,7 @@ import (
 
 type Block struct {
 	TimeStamp     int64
-	Transactions  []*Transation
+	Transactions  []*Transaction
 	PrevBlockHash []byte
 	Hash          []byte  //比特币用的Merkle树
 	Nonce		  int
@@ -52,7 +52,7 @@ func (b *Block)HashTransaction()[]byte  {
 }
 
 
-func NewBlock(transation []*Transation,prevBlockHash []byte) *Block  {
+func NewBlock(transation []*Transaction,prevBlockHash []byte) *Block  {
 
 	var block = &Block{
 		time.Now().Unix(),
@@ -70,8 +70,8 @@ func NewBlock(transation []*Transation,prevBlockHash []byte) *Block  {
 	return block
 }
 
-func NewGenesisBlock(coinbase *Transation) *Block {
-	return NewBlock([]*Transation{coinbase},[]byte{})
+func NewGenesisBlock(coinbase *Transaction) *Block {
+	return NewBlock([]*Transaction{coinbase},[]byte{})
 
 }
 
