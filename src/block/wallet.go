@@ -29,6 +29,7 @@ func NewWallet()*Wallet  {
 	return &wallet
 }
 
+
 //返回钱包地址
 func (w Wallet)GetAddress()[]byte  {
 	var pubKeyHash = HashPubKey(w.PublicKey)
@@ -47,7 +48,6 @@ func HashPubKey(pubKey []byte) []byte {
 	var publicSHA256 = sha256.Sum256(pubKey)
 
 
-	//var RIPEMD160Hasher = crypto.RIPEMD160.New()
 	var RIPEMD160Hasher = ripemd160.New()
 	var _,err = RIPEMD160Hasher.Write(publicSHA256[:])
 	utils.LogErr(err)
@@ -65,6 +65,8 @@ func ValidateAddress(address string)bool  {
 	pubKeyHash = pubKeyHash[1:len(pubKeyHash)-addressChecksumLen]
 	var targetChecksum = checksum(append([]byte{version},pubKeyHash...))
 
+	var b = bytes.Compare(actualChecksum,targetChecksum)
+	b++
 	return bytes.Compare(actualChecksum,targetChecksum) == 0
 }
 
@@ -86,4 +88,3 @@ func newKeyPair()(ecdsa.PrivateKey,[]byte)  {
 
 	return *private,pubKey
 }
-

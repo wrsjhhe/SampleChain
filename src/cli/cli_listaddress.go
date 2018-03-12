@@ -7,7 +7,7 @@ import (
 )
 
 func (cli *CLI) listAddresses() {
-	wallets, err := block.NewWallets()
+	wallets, err := block.GetWallets()
 	if err != nil {
 		log.Panic(err)
 	}

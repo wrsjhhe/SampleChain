@@ -3,6 +3,7 @@ package block
 import (
 	"bytes"
 	"utils"
+	"encoding/gob"
 )
 
 //交易输出
@@ -10,6 +11,11 @@ type TXOutput struct{
 	Value          int      //储存了“币”数量
 	PubKeyHash     []byte   //公钥哈希
 }
+
+type TXOutputs struct {
+	Outputs    []TXOutput
+}
+
 
 //检查是否提供的公钥哈希被用于锁定输出
 func (out *TXOutput)IsLockedWithKey(pubKeyHash []byte)bool  {
@@ -30,4 +36,26 @@ func NewTXOutput(value int,address string) *TXOutput  {
 	var txo = &TXOutput{value,nil}
 	txo.Lock([]byte(address))
 	return txo
+}
+
+//序列化TXOutputs对象到字节数组
+func (outs TXOutputs)Serialize()[]byte  {
+	var buff bytes.Buffer
+
+	var enc = gob.NewEncoder(&buff)
+	var err = enc.Encode(outs)
+	utils.LogErr(err)
+
+	return buff.Bytes()
+}
+
+//将字节数组反序列化为TXOutput对象
+func DeserializeOutputs(data []byte)TXOutputs  {
+	var outputs TXOutputs
+
+	var dec = gob.NewDecoder(bytes.NewReader(data))
+	var err = dec.Decode(&outputs)
+	utils.LogErr(err)
+
+	return outputs
 }

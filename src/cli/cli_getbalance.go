@@ -12,12 +12,13 @@ func (cli *CLI) getBalance(address string) {
 		log.Panic("ERROR: Address is not valid")
 	}
 	bc := block.GetBlockchain()
+	var utxoSet = block.UTXOSet{bc}
 	defer bc.Db.Close()
 
 	balance := 0
 	pubKeyHash := utils.Base58Decode([]byte(address))
 	pubKeyHash = pubKeyHash[1 : len(pubKeyHash)-4]
-	UTXOs := bc.FindUTXO(pubKeyHash)
+	UTXOs := utxoSet.FindUTXO(pubKeyHash)
 
 	for _, out := range UTXOs {
 		balance += out.Value

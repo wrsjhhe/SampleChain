@@ -6,7 +6,7 @@ import (
 )
 
 func (cli *CLI) createWallet() {
-	wallets, _ := block.NewWallets()
+	wallets, _ := block.GetWallets()
 	address := wallets.CreateWallet()
 	wallets.SaveToFile()
 

@@ -9,6 +9,7 @@ import (
 	"crypto/ecdsa"
 	"bytes"
 	"errors"
+	"log"
 )
 
 const dbFIle  = "blockchain.db"
@@ -28,14 +29,15 @@ func CreateBlockchain(address string)*Blockchain  {
 	}
 
 	var tip []byte
+
+	var cbtx = NewCoinbaseTX(address,genesisCoinbaseData)
+	var genesis = NewGenesisBlock(cbtx)
+
 	//打开一个db文件标准做法，文件不存在不会返回错误
 	var db ,err = bolt.Open(dbFIle,0600,nil)
 	utils.LogErr(err)
 
 	err = db.Update(func(tx *bolt.Tx) error { //读写事物
-
-		var cbtx = NewCoinbaseTX(address,genesisCoinbaseData)
-		var genesis = NewGenesisBlock(cbtx)
 
 		var b,err = tx.CreateBucket([]byte(blocksBucket))
 		utils.LogErr(err)
@@ -84,8 +86,15 @@ func GetBlockchain()*Blockchain {
 
 
 //通过提供的交易数据来挖掘新块
-func (bc *Blockchain)MineBlock(transations []*Transaction)  {
+func (bc *Blockchain)MineBlock(transations []*Transaction) *Block {
 	var lastHash   []byte
+
+	for _,tx:=range transations{
+		if bc.VerifyTransaction(tx)!=true{
+			log.Panic("ERROR,Invalid transaction")
+		}
+	}
+
 
 	var err = bc.Db.View(func(tx *bolt.Tx) error {
 		var b = tx.Bucket([]byte(blocksBucket))
@@ -109,10 +118,11 @@ func (bc *Blockchain)MineBlock(transations []*Transaction)  {
 		bc.Tip = newBlock.Hash
 		return nil
 	})
+	return newBlock
 }
 
 //通过交易ID返回一个交易
-func (bc *Blockchain)FIndTransaction(ID []byte)(Transaction,error)  {
+func (bc *Blockchain)FindTransaction(ID []byte)(Transaction,error)  {
 	var bci = bc.Iterator()
 
 	for{
@@ -177,19 +187,48 @@ func (bc *Blockchain)FindUnspentTransactions(pubKeyHash []byte) []Transaction  {
 	return  unspentTXs
 }
 
-//找到并返回所有非花费输出
-func (bc *Blockchain)FindUTXO(pubKeyHash []byte) []TXOutput  {
-	var UTXOs []TXOutput
-	var unspentTransactions = bc.FindUnspentTransactions(pubKeyHash)
+//找到并返回所有非花费输出,返回的是移除了花费了的输出
+func (bc *Blockchain)FindUTXO() map[string]TXOutputs  {
+	var UTXO = make(map[string]TXOutputs)
 
-	for _,tx:=range unspentTransactions{
-		for _,out:=range tx.Vout{
-			if out.IsLockedWithKey(pubKeyHash){
-				UTXOs = append(UTXOs,out)
-			}
+	var spentTXOs = make(map[string][]int)
+	var bci = bc.Iterator()
+
+	for{
+		var blck = bci.Next()
+
+		for _,tx:=range blck.Transactions{
+			var txID = hex.EncodeToString(tx.ID)
+
+			Outputs:
+				for outIdx,out:=range tx.Vout{
+					//是否输出被花费了
+					if spentTXOs[txID] !=nil{
+						for _,spentOutIdx:=range spentTXOs[txID]{
+							if spentOutIdx == outIdx{
+								continue Outputs
+							}
+						}
+					}
+
+					var outs = UTXO[txID]
+					outs.Outputs = append(outs.Outputs,out)
+					UTXO[txID] = outs
+				}
+
+				if tx.IsCoinBose() == false{
+					for _,in := range tx.Vin{
+						var inTxId = hex.EncodeToString(in.Txid)
+						spentTXOs[inTxId] = append(spentTXOs[inTxId],in.Vout)
+					}
+				}
+		}
+
+		if len(blck.PrevBlockHash) == 0{
+			break
 		}
 	}
-	return UTXOs
+	return UTXO
 }
 
 func (bc *Blockchain)FindSpendableOutput(pubKeyHash []byte,amount int)(int,map[string][]int)  {
@@ -220,7 +259,7 @@ func (bc *Blockchain)SignTransaction(tx *Transaction, privKey ecdsa.PrivateKey) 
 	var prevTXs = make(map[string]Transaction)
 
 	for _,vin:= range tx.Vin{
-		prevTX,err:=bc.FIndTransaction(vin.Txid)
+		prevTX,err:=bc.FindTransaction(vin.Txid)
 		utils.LogErr(err)
 		prevTXs[hex.EncodeToString(prevTX.ID)] = prevTX
 	}
@@ -231,7 +270,7 @@ func (bc *Blockchain)VerifyTransaction(tx *Transaction)bool  {
 	var prevTXs = make(map[string]Transaction)
 
 	for _,vin := range tx.Vin{
-		var prevTX,err = bc.FIndTransaction(vin.Txid)
+		var prevTX,err = bc.FindTransaction(vin.Txid)
 		utils.LogErr(err)
 
 		prevTXs[hex.EncodeToString(prevTX.ID)] = prevTX

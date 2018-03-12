@@ -16,7 +16,7 @@ type Wallets struct {
 }
 
 //从一个存在的文件中读取钱包的集合
-func NewWallets()(*Wallets,error)  {
+func GetWallets()(*Wallets,error)  {
 	var wallets = Wallets{}
 	wallets.Wallets = make(map[string]*Wallet)
 

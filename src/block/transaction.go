@@ -206,7 +206,7 @@ func NewUTXOTransaction(from,to string,amount int,bc *Blockchain) *Transaction {
 	var inputs  []TXInput
 	var outputs  []TXOutput
 
-	var wallets,err = NewWallets()
+	var wallets,err = GetWallets()
 	utils.LogErr(err)
 	var wallet = wallets.GetWallet(from)
 	var pubKeyHash = HashPubKey(wallet.PublicKey)
