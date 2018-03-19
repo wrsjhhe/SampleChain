@@ -6,8 +6,8 @@ import (
 	"block"
 )
 
-func (cli *CLI) listAddresses() {
-	wallets, err := block.GetWallets()
+func (cli *CLI) listAddresses(nodeID string) {
+	wallets, err := block.GetWallets(nodeID)
 	if err != nil {
 		log.Panic(err)
 	}

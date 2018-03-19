@@ -5,11 +5,11 @@ import (
 	"fmt"
 )
 
-func (cli *CLI)reindexUTXO()  {
-	var bc = block.GetBlockchain()
-	var utxoSet = block.UTXOSet{bc}
-	utxoSet.Reindex()
+func (cli *CLI) reindexUTXO(nodeID string) {
+	bc := block.GetBlockchain(nodeID)
+	UTXOSet := block.UTXOSet{bc}
+	UTXOSet.Reindex()
 
-	var count = utxoSet.CountTransactions()
-	fmt.Printf("Done!There are %d transaction in the UTXO set.\n",count)
+	count := UTXOSet.CountTransactions()
+	fmt.Printf("Done! There are %d transactions in the UTXO set.\n", count)
 }

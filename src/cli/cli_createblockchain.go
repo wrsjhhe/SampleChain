@@ -6,11 +6,16 @@ import (
 	"block"
 )
 
-func (cli *CLI) createBlockchain(address string) {
-	if ! block.ValidateAddress(address) {
+
+func (cli *CLI) createBlockchain(address, nodeID string) {
+	if !block.ValidateAddress(address) {
 		log.Panic("ERROR: Address is not valid")
 	}
-	bc := block.CreateBlockchain(address)
-	bc.Db.Close()
+	bc := block.CreateBlockchain(address, nodeID)
+	defer bc.Db.Close()
+
+	UTXOSet := block.UTXOSet{bc}
+	UTXOSet.Reindex()
+
 	fmt.Println("Done!")
 }

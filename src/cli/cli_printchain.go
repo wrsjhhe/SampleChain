@@ -6,25 +6,26 @@ import (
 	"block"
 )
 
-func (cli *CLI) printChain() {
-	bc := block.GetBlockchain()
+func (cli *CLI) printChain(nodeID string) {
+	bc := block.GetBlockchain(nodeID)
 	defer bc.Db.Close()
 
 	bci := bc.Iterator()
 
 	for {
-		nbc := bci.Next()
+		blck := bci.Next()
 
-		fmt.Printf("============ Block %x ============\n", nbc.Hash)
-		fmt.Printf("Prev. block: %x\n", nbc.PrevBlockHash)
-		pow := block.NewProofOfWork(nbc)
+		fmt.Printf("============ Block %x ============\n", blck.Hash)
+		fmt.Printf("Height: %d\n", blck.Height)
+		fmt.Printf("Prev. block: %x\n", blck.PrevBlockHash)
+		pow := block.NewProofOfWork(blck)
 		fmt.Printf("PoW: %s\n\n", strconv.FormatBool(pow.Validate()))
-		for _, tx := range nbc.Transactions {
+		for _, tx := range blck.Transactions {
 			fmt.Println(tx)
 		}
 		fmt.Printf("\n\n")
 
-		if len(nbc.PrevBlockHash) == 0 {
+		if len(blck.PrevBlockHash) == 0 {
 			break
 		}
 	}

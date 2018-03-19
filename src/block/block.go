@@ -14,6 +14,7 @@ type Block struct {
 	PrevBlockHash []byte
 	Hash          []byte  //比特币用的Merkle树
 	Nonce		  int
+	Height	      int
 }
 
 //序列化区块,因为在boltdb中值只能是[]byte，而我们想要存的是结构
@@ -52,14 +53,15 @@ func (b *Block)HashTransaction()[]byte  {
 }
 
 
-func NewBlock(transation []*Transaction,prevBlockHash []byte) *Block  {
+func NewBlock(transation []*Transaction,prevBlockHash []byte,height int) *Block  {
 
 	var block = &Block{
 		time.Now().Unix(),
 		transation,
 		prevBlockHash,
 		[]byte{},
-		0}
+		0,
+		height}
 
 	var pow = NewProofOfWork(block)
 
@@ -71,7 +73,7 @@ func NewBlock(transation []*Transaction,prevBlockHash []byte) *Block  {
 }
 
 func NewGenesisBlock(coinbase *Transaction) *Block {
-	return NewBlock([]*Transaction{coinbase},[]byte{})
+	return NewBlock([]*Transaction{coinbase},[]byte{},0)
 
 }
 

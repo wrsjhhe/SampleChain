@@ -11,7 +11,7 @@ import (
 )
 
 const version = byte(0x00)
-const walletFile = "wallet.dat"
+const walletFile = "wallet_%s.dat"
 const addressChecksumLen = 4
 
 //钱包储存私钥和公钥

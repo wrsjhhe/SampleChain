@@ -12,7 +12,7 @@ import (
 	"log"
 )
 
-const dbFIle  = "blockchain.db"
+const dbFile  = "blockchain_%s.db"
 const blocksBucket = "blocks"
 const genesisCoinbaseData = "The Times 03/Jan/2009 Chancellor on brink of second bailout of banks"
 
@@ -22,8 +22,13 @@ type Blockchain struct {
 	Db  *bolt.DB
 }
 
-func CreateBlockchain(address string)*Blockchain  {
-	if dbExists(){
+
+//创建新的链
+func CreateBlockchain(address,nodeID string)*Blockchain  {
+
+	var dbFile = fmt.Sprintf(dbFile,nodeID)
+
+	if dbExists(dbFile){
 		fmt.Println("Blockchain already exists")
 		os.Exit(1)
 	}
@@ -34,7 +39,7 @@ func CreateBlockchain(address string)*Blockchain  {
 	var genesis = NewGenesisBlock(cbtx)
 
 	//打开一个db文件标准做法，文件不存在不会返回错误
-	var db ,err = bolt.Open(dbFIle,0600,nil)
+	var db ,err = bolt.Open(dbFile,0600,nil)
 	utils.LogErr(err)
 
 	err = db.Update(func(tx *bolt.Tx) error { //读写事物
@@ -61,15 +66,17 @@ func CreateBlockchain(address string)*Blockchain  {
 
 
 //返回现有的区块链
-func GetBlockchain()*Blockchain {
-	if dbExists() == false{
+func GetBlockchain(nodeID string)*Blockchain {
+	var dbFile = fmt.Sprintf(dbFile,nodeID)
+
+	if dbExists(dbFile) == false{
 		fmt.Println("No existing blockchain found.Create one first")
 		os.Exit(1)
 	}
 
 	var tip []byte
 	//打开一个db文件标准做法，文件不存在不会返回错误
-	var db ,err = bolt.Open(dbFIle,0600,nil)
+	var db ,err = bolt.Open(dbFile,0600,nil)
 	utils.LogErr(err)
 
 	err = db.Update(func(tx *bolt.Tx) error { //读写事物
@@ -84,10 +91,53 @@ func GetBlockchain()*Blockchain {
 	return &bc
 }
 
+//保存块到区块链
+func (bc *Blockchain)AddBlock(block *Block)  {
+	var err = bc.Db.Update(func(tx *bolt.Tx) error {
+		var b = tx.Bucket([]byte(blocksBucket))
+		var blockInDb = b.Get(block.Hash)
+
+		if blockInDb == nil{
+			return nil
+		}
+
+		var blockData = block.Serialize()
+		var err = b.Put(block.Hash,blockData)
+		utils.LogErr(err)
+
+		var lastHash = b.Get([]byte("l"))
+		var lastBlockData = b.Get(lastHash)
+		var lastBlock = DeserializeBlock(lastBlockData)
+
+		if block.Height > lastBlock.Height{
+			err = b.Put([]byte("l"),block.Hash)
+			utils.LogErr(err)
+			bc.Tip = block.Hash
+		}
+		return nil
+	})
+	utils.LogErr(err)
+}
+
+func (bc *Blockchain)GetBlockHashes()[][]byte  {
+	var blocks [][]byte
+	var bci = bc.Iterator()
+
+	for{
+		var block = bci.Next()
+
+		blocks = append(blocks,block.Hash)
+		if len(block.PrevBlockHash) == 0{
+			break
+		}
+	}
+	return blocks
+}
 
 //通过提供的交易数据来挖掘新块
 func (bc *Blockchain)MineBlock(transations []*Transaction) *Block {
 	var lastHash   []byte
+	var lastHeight int
 
 	for _,tx:=range transations{
 		if bc.VerifyTransaction(tx)!=true{
@@ -99,12 +149,17 @@ func (bc *Blockchain)MineBlock(transations []*Transaction) *Block {
 	var err = bc.Db.View(func(tx *bolt.Tx) error {
 		var b = tx.Bucket([]byte(blocksBucket))
 		lastHash = b.Get([]byte("l"))
+
+		var blockData = b.Get(lastHash)
+		var block = DeserializeBlock(blockData)
+
+		lastHeight = block.Height
 		return nil
 	})
 
 	utils.LogErr(err)
 
-	var newBlock = NewBlock(transations,lastHash)
+	var newBlock = NewBlock(transations,lastHash,lastHeight+1)
 
 	err = bc.Db.Update(func(tx *bolt.Tx) error {
 		var b = tx.Bucket([]byte(blocksBucket))
@@ -285,10 +340,43 @@ func (bc *Blockchain) Iterator() *BlockchainIterator  {
 	return bci
 }
 
+//返回最后一个块的高度
+func (bc* Blockchain)GetBestHeight()int  {
+	var lastBlock Block
 
+	var err = bc.Db.View(func(tx *bolt.Tx) error {
+		var b = tx.Bucket([]byte(blocksBucket))
+		var lastHash = b.Get([]byte("l"))
+		var blockData = b.Get(lastHash)
+		lastBlock = *DeserializeBlock(blockData)
 
-func dbExists()bool  {
-	if _,err :=os.Stat(dbFIle);os.IsNotExist(err){
+		return nil
+	})
+	utils.LogErr(err)
+
+	return lastBlock.Height
+}
+
+func (bc *Blockchain)GetBlock(blockHash []byte)(Block,error)  {
+	var block Block
+
+	var err = bc.Db.View(func(tx *bolt.Tx) error {
+		var b = tx.Bucket([]byte(blocksBucket))
+
+		var blockData = b.Get(blockHash)
+		if blockData == nil{
+			return errors.New("Block is not found.")
+		}
+
+		block = *DeserializeBlock(blockData)
+		return nil
+	})
+	utils.LogErr(err)
+	return block ,nil
+}
+
+func dbExists(dbFile string)bool  {
+	if _,err :=os.Stat(dbFile);os.IsNotExist(err){
 		return false
 	}
 	return true
