@@ -62,13 +62,13 @@ func (ws Wallets)LoadFromFile(nodeID string)error  {
 	fileContent,err:=ioutil.ReadFile(walletFile)
 	utils.LogErr(err)
 
-	var wallets Wallets
+	//var wallets Wallets
 	gob.Register(elliptic.P256())
 	var decoder = gob.NewDecoder(bytes.NewReader(fileContent))
-	err = decoder.Decode(&wallets)
+	err = decoder.Decode(&ws)
 	utils.LogErr(err)
 
-	ws.Wallets = wallets.Wallets
+	//ws.Wallets = wallets.Wallets
 	return err
 }
 
